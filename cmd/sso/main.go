@@ -1,8 +1,8 @@
 package main
 
 import (
-	"fmt"
 	"grpc-service-ref/internal/config"
+	"grpc-service-ref/internal/lib/logger/handlers/slogpretty"
 	"log/slog"
 	"os"
 )
@@ -16,7 +16,9 @@ const (
 func main() {
 	cfg := config.MustLoad()
 
-	fmt.Println(cfg)
+	log := setupLogger(cfg.Env)
+
+	log.Info("starting application", slog.Any("config", cfg))
 }
 
 func setupLogger(env string) *slog.Logger {
@@ -24,8 +26,28 @@ func setupLogger(env string) *slog.Logger {
 
 	switch env {
 	case envLocal:
+		log = setupPrettySlog()
+	case envDev:
 		log = slog.New(
-			slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}),
+			slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}),
+		)
+	case envProd:
+		log = slog.New(
+			slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}),
 		)
 	}
+
+	return log
+}
+
+func setupPrettySlog() *slog.Logger {
+	opts := slogpretty.PrettyHandlerOptions{
+		SlogOpts: &slog.HandlerOptions{
+			Level: slog.LevelDebug,
+		},
+	}
+
+	handler := opts.NewPrettyHandler(os.Stdout)
+
+	return slog.New(handler)
 }
